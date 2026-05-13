@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Monitor Detector AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080808;--bg2:#101010;--bg3:#181818;
+  --bd:#252525;--bdB:#333;
+  --tx:#f2f2f2;--mu:#555;--di:#2e2e2e;
+  --g:#00ff88;--r:#ff3535;--y:#ffb300;--b:#4d9eff;
+  --mono:'Space Mono',monospace;--sans:'Syne',sans-serif;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--tx);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+
+/* grain */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+}
+
+/* HEADER */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 40px;border-bottom:1px solid var(--bd);
+  position:sticky;top:0;background:rgba(8,8,8,.94);
+  backdrop-filter:blur(16px);z-index:100;
+}
+.logo{display:flex;align-items:center;gap:10px;font-weight:900;font-size:1.05rem;letter-spacing:-.03em}
+.logo-sq{
+  width:28px;height:28px;background:var(--g);border-radius:5px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 18px var(--g)55;flex-shrink:0;
+}
+.logo-sq svg{width:14px;height:14px;stroke:#000;fill:none;stroke-width:2.5}
+.pill{
+  display:flex;align-items:center;gap:7px;padding:5px 13px;
+  border:1px solid var(--bdB);border-radius:100px;
+  font-family:var(--mono);font-size:.68rem;color:var(--mu);
+  background:var(--bg2);transition:all .3s;
+}
+.pill.ready{border-color:var(--g);color:var(--g)}
+.pill.err{border-color:var(--r);color:var(--r)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--mu);animation:blink 2s infinite}
+.pill.ready .dot{background:var(--g)}
+.pill.err .dot{background:var(--r);animation:none}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* MAIN */
+main{max-width:980px;margin:0 auto;padding:64px 24px 100px;display:flex;flex-direction:column;gap:52px}
+
+/* HERO */
+.hero{text-align:center}
+.badge{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:var(--mono);font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--g);border:1px solid var(--g);padding:5px 14px;border-radius:3px;
+  margin-bottom:28px;box-shadow:0 0 20px var(--g)22;
+}
+.badge-dot{width:5px;height:5px;border-radius:50%;background:var(--g);animation:blink 1.4s infinite}
+h1{font-size:clamp(2.8rem,7vw,5rem);font-weight:900;line-height:1.0;letter-spacing:-.05em;margin-bottom:22px}
+h1 em{
+  font-style:normal;display:block;
+  background:linear-gradient(135deg,var(--g) 0%,#00ccff 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.sub{font-family:var(--mono);font-size:.82rem;color:var(--mu);line-height:1.8;max-width:460px;margin:0 auto}
+
+/* DETECTION */
+.det-area{display:flex;flex-direction:column;gap:16px}
+.controls{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+
+/* BUTTONS */
+.btn{
+  display:inline-flex;align-items:center;gap:8px;padding:11px 22px;
+  border-radius:7px;border:1px solid var(--bdB);
+  font-family:var(--mono);font-size:.75rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.06em;
+  cursor:pointer;background:var(--bg2);color:var(--tx);
+  transition:all .15s;white-space:nowrap;
+}
+.btn:hover{transform:translateY(-2px)}
+.btn:active{transform:none}
+.btn:disabled{opacity:.35;pointer-events:none}
+.btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0}
+.btn-g{border-color:var(--g);color:var(--g);background:rgba(0,255,136,.07)}
+.btn-g:hover{background:var(--g);color:#000;box-shadow:0 0 24px var(--g)44}
+.btn-s:hover{border-color:var(--tx)}
+.btn-r{border-color:var(--r);color:var(--r);background:rgba(255,53,53,.07)}
+.btn-r:hover{background:var(--r);color:#fff}
+.btn-b{border-color:var(--b);color:var(--b);background:rgba(77,158,255,.07)}
+.btn-b:hover{background:var(--b);color:#fff}
+
+/* CANVAS WRAPPER */
+.wrap{
+  position:relative;border:1px solid var(--bd);border-radius:14px;
+  overflow:hidden;background:var(--bg2);min-height:380px;
+  display:flex;align-items:center;justify-content:center;
+  transition:border-color .3s,box-shadow .3s;
+}
+.wrap.drag{border-color:var(--g);box-shadow:0 0 0 3px var(--g)22}
+.wrap.active{border-color:#282828;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.wrap.active::after{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:5;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.05) 2px,rgba(0,0,0,.05) 4px);
+}
+
+/* PLACEHOLDER */
+.ph{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:60px 40px;text-align:center}
+.ph-ring{
+  width:80px;height:80px;border:2px dashed var(--di);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:2rem;
+  animation:spin-slow 14s linear infinite;
+}
+@keyframes spin-slow{to{transform:rotate(360deg)}}
+.ph p{font-family:var(--mono);font-size:.8rem;color:var(--mu)}
+.ph small{font-family:var(--mono);font-size:.67rem;color:var(--di)}
+.prog-wrap{width:220px;height:2px;background:var(--bd);border-radius:2px;overflow:hidden;margin-top:12px;display:none}
+.prog-bar{height:100%;width:0%;background:var(--g);box-shadow:0 0 8px var(--g);transition:width .2s}
+
+#videoEl,#outCanvas{width:100%;height:auto;max-height:540px;object-fit:contain;display:none}
+#ovrCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:10}
+
+/* LOADING */
+.ld-ov{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:18px;
+  background:rgba(8,8,8,.82);backdrop-filter:blur(6px);z-index:20;
+}
+.spin{width:44px;height:44px;border:2px solid var(--bd);border-top-color:var(--g);border-right-color:var(--g);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ld-txt{font-family:var(--mono);font-size:.72rem;color:var(--mu)}
+
+.cam-ctrl{display:none;gap:12px;justify-content:center;flex-wrap:wrap}
+
+/* RESULTS */
+.res-panel{
+  background:var(--bg2);border:1px solid var(--bd);
+  border-radius:14px;padding:28px;display:none;
+  animation:fadeUp .25s ease;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.res-panel h2{font-family:var(--mono);font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;color:var(--mu);margin-bottom:18px}
+.res-grid{display:flex;flex-direction:column;gap:10px;margin-bottom:18px}
+.ri{
+  display:flex;align-items:center;gap:16px;padding:14px 18px;
+  border-radius:9px;border:1px solid var(--bd);background:var(--bg3);
+  animation:slideIn .2s ease;
+}
+@keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+.ri-ico{font-size:1.5rem;flex-shrink:0}
+.ri-info{flex:1}
+.ri-cls{font-weight:800;font-size:.95rem;text-transform:uppercase;letter-spacing:-.01em;margin-bottom:2px}
+.ri-cls.menyala{color:var(--g)}
+.ri-cls.mati{color:var(--r)}
+.ri-cls.objects{color:var(--y)}
+.ri-conf{font-family:var(--mono);font-size:.68rem;color:var(--mu)}
+.cb-wrap{width:90px;flex-shrink:0;display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+.cb-pct{font-family:var(--mono);font-size:.72rem}
+.cb-bg{width:100%;height:3px;background:var(--bd);border-radius:2px;overflow:hidden}
+.cb{height:100%;border-radius:2px;transition:width .3s}
+.cb.menyala{background:var(--g)}
+.cb.mati{background:var(--r)}
+.cb.objects{background:var(--y)}
+.no-det{font-family:var(--mono);font-size:.78rem;color:var(--di);text-align:center;padding:20px}
+.res-foot{font-family:var(--mono);font-size:.68rem;color:var(--mu);padding-top:14px;border-top:1px solid var(--bd)}
+
+/* STATS */
+.stats{
+  display:none;grid-template-columns:repeat(4,1fr);
+  gap:1px;background:var(--bd);border:1px solid var(--bd);
+  border-radius:12px;overflow:hidden;
+}
+.st{background:var(--bg2);padding:16px 20px;display:flex;flex-direction:column;gap:5px}
+.st-l{font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--di)}
+.st-v{font-family:var(--mono);font-size:.92rem;font-weight:700;color:var(--g)}
+
+/* INFO CARDS */
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.card{
+  padding:26px;border:1px solid var(--bd);border-radius:12px;
+  background:var(--bg2);transition:border-color .2s,transform .2s,box-shadow .2s;
+  position:relative;overflow:hidden;
+}
+.card::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at top left,rgba(0,255,136,.04) 0%,transparent 60%);
+}
+.card:hover{border-color:var(--bdB);transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,.4)}
+.card-ico{font-size:1.8rem;margin-bottom:14px}
+.card h3{font-size:.95rem;font-weight:800;margin-bottom:8px}
+.card p{font-family:var(--mono);font-size:.7rem;color:var(--mu);line-height:1.75}
+
+/* FOOTER */
+footer{border-top:1px solid var(--bd);padding:22px 40px;text-align:center;font-family:var(--mono);font-size:.68rem;color:var(--di)}
+footer a{color:var(--mu);text-decoration:none}
+footer a:hover{color:var(--g)}
+
+/* TOAST */
+.toast{
+  position:fixed;bottom:28px;right:28px;background:var(--bg3);
+  border:1px solid var(--bdB);border-radius:9px;padding:11px 18px;
+  font-family:var(--mono);font-size:.72rem;color:var(--tx);z-index:99999;
+  animation:toastIn .3s ease;max-width:300px;line-height:1.5;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+}
+.toast.ok{border-color:var(--g);color:var(--g)}
+.toast.err{border-color:var(--r);color:var(--r)}
+@keyframes toastIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+@media(max-width:640px){
+  header{padding:14px 18px}
+  main{padding:40px 16px 70px;gap:36px}
+  h1{font-size:2.4rem}
+  .logo-text{display:none}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .cards{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-sq">
+      <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+    </div>
+    <span class="logo-text">MonitorAI</span>
+  </div>
+  <div class="pill" id="pill">
+    <span class="dot"></span>
+    <span id="pillTxt">Memuat Model...</span>
+  </div>
+</header>
+
+<main>
+
+  <section class="hero">
+    <div class="badge"><span class="badge-dot"></span>YOLO11n &nbsp;·&nbsp; ONNX Runtime Web &nbsp;·&nbsp; Real-time</div>
+    <h1>Deteksi Monitor<em>Nyala / Mati</em></h1>
+    <p class="sub">Upload foto atau aktifkan kamera — AI mendeteksi status monitor secara otomatis, langsung di browser tanpa kirim data ke mana pun.</p>
+  </section>
+
+  <section class="det-area">
+    <div class="controls">
+      <button class="btn btn-g" id="btnCam" disabled>
+        <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Buka Kamera
+      </button>
+      <button class="btn btn-s" id="btnUp" disabled>
+        <svg viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+        Upload Gambar
+      </button>
+      <input type="file" id="fileIn" accept="image/*" style="display:none">
+    </div>
+
+    <div class="wrap" id="wrap">
+      <div class="ph" id="ph">
+        <div class="ph-ring">🖥️</div>
+        <p>Belum ada gambar</p>
+        <small>Upload foto · Kamera · Drag &amp; drop · Ctrl+V paste</small>
+        <div class="prog-wrap" id="progWrap"><div class="prog-bar" id="progBar"></div></div>
+      </div>
+      <video id="videoEl" autoplay playsinline muted></video>
+      <canvas id="outCanvas"></canvas>
+      <canvas id="ovrCanvas"></canvas>
+    </div>
+
+    <div class="cam-ctrl" id="camCtrl">
+      <button class="btn btn-r" id="btnStop">
+        <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12"/></svg>
+        Stop Kamera
+      </button>
+      <button class="btn btn-b" id="btnSnap">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+        Snapshot
+      </button>
+    </div>
+  </section>
+
+  <section class="res-panel" id="resPanel">
+    <h2>// Hasil Deteksi</h2>
+    <div class="res-grid" id="resGrid"></div>
+    <div class="res-foot" id="resFoot"></div>
+  </section>
+
+  <div class="stats" id="stats">
+    <div class="st"><span class="st-l">Waktu Inferensi</span><span class="st-v" id="stInf">—</span></div>
+    <div class="st"><span class="st-l">Objek Terdeteksi</span><span class="st-v" id="stObj">—</span></div>
+    <div class="st"><span class="st-l">Model</span><span class="st-v">YOLO11n</span></div>
+    <div class="st"><span class="st-l">Backend</span><span class="st-v" id="stBe">—</span></div>
+  </div>
+
+  <section class="cards">
+    <div class="card">
+      <div class="card-ico">🔒</div>
+      <h3>100% Privat</h3>
+      <p>Semua proses inferensi berjalan di browser kamu. Tidak ada gambar atau data yang dikirim ke server.</p>
+    </div>
+    <div class="card">
+      <div class="card-ico">⚡</div>
+      <h3>Real-time Detection</h3>
+      <p>Deteksi langsung dari stream kamera atau foto upload dalam hitungan puluhan milidetik.</p>
+    </div>
+    <div class="card">
+      <div class="card-ico">🤖</div>
+      <h3>YOLO11n ONNX</h3>
+      <p>Model ringan dioptimalkan khusus untuk deteksi monitor <em style="color:var(--g);font-style:normal">nyala</em> dan <em style="color:var(--r);font-style:normal">mati</em>.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  Built with <a href="https://onnxruntime.ai" target="_blank">ONNX Runtime Web</a> &nbsp;·&nbsp; YOLO11n &nbsp;·&nbsp; Runs entirely in your browser
+</footer>
+
+<script type="module">
+import * as ort from 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/esm/ort.min.js';
+
+const MODEL_URL   = './model/best.onnx';
+const INPUT_SIZE  = 640;
+const CONF_THRESH = 0.25;
+const IOU_THRESH  = 0.45;
+const CLASSES     = ['mati','menyala','objects'];
+const COLORS      = {menyala:'#00ff88',mati:'#ff3535',objects:'#ffb300'};
+const EMOJI       = {menyala:'🟢',mati:'🔴',objects:'🟡'};
+
+const $  = id => document.getElementById(id);
+const pill    = $('pill');
+const pillTxt = $('pillTxt');
+const btnCam  = $('btnCam');
+const btnUp   = $('btnUp');
+const fileIn  = $('fileIn');
+const camCtrl = $('camCtrl');
+const btnStop = $('btnStop');
+const btnSnap = $('btnSnap');
+const video   = $('videoEl');
+const outC    = $('outCanvas');
+const ovrC    = $('ovrCanvas');
+const wrap    = $('wrap');
+const ph      = $('ph');
+const resPanel= $('resPanel');
+const resGrid = $('resGrid');
+const resFoot = $('resFoot');
+const stats   = $('stats');
+const stInf   = $('stInf');
+const stObj   = $('stObj');
+const stBe    = $('stBe');
+const progWrap= $('progWrap');
+const progBar = $('progBar');
+const ctx     = outC.getContext('2d');
+const octx    = ovrC.getContext('2d');
+
+let session=null, stream=null, rafId=null, be='WASM';
+
+/* ── LOAD MODEL ── */
+async function loadModel(){
+  try{
+    setStatus('Memuat Model...','');
+    progWrap.style.display='block';
+    let p=0;
+    const t=setInterval(()=>{p=Math.min(p+Math.random()*9,88);progBar.style.width=p+'%'},250);
+    ort.env.wasm.wasmPaths='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
+    for(const ep of ['webgl','wasm']){
+      try{
+        session=await ort.InferenceSession.create(MODEL_URL,{executionProviders:[ep],graphOptimizationLevel:'all'});
+        be=ep.toUpperCase(); break;
+      }catch{session=null;}
+    }
+    clearInterval(t);
+    progBar.style.width='100%';
+    setTimeout(()=>{progWrap.style.display='none'},400);
+    if(!session)throw new Error('Semua backend gagal');
+    setStatus('Model Siap ✓','ready');
+    stBe.textContent=be;
+    btnCam.disabled=false; btnUp.disabled=false;
+    toast('Model berhasil dimuat 🎉','ok');
+  }catch(e){setStatus('Gagal Memuat','err');toast('Error: '+e.message,'err');}
+}
+
+/* ── PREPROCESS ── */
+function preprocess(src){
+  const off=Object.assign(document.createElement('canvas'),{width:INPUT_SIZE,height:INPUT_SIZE});
+  off.getContext('2d').drawImage(src,0,0,INPUT_SIZE,INPUT_SIZE);
+  const px=off.getContext('2d').getImageData(0,0,INPUT_SIZE,INPUT_SIZE).data;
+  const n=INPUT_SIZE*INPUT_SIZE, f=new Float32Array(3*n);
+  for(let i=0;i<n;i++){f[i]=px[i*4]/255;f[n+i]=px[i*4+1]/255;f[2*n+i]=px[i*4+2]/255;}
+  return f;
+}
+
+/* ── INFER ── */
+async function infer(src){
+  if(!session)return null;
+  const t0=performance.now();
+  const inp=new ort.Tensor('float32',preprocess(src),[1,3,INPUT_SIZE,INPUT_SIZE]);
+  const out=(await session.run({images:inp}))['output0'].data;
+  const ms=performance.now()-t0;
+  const N=8400,C=CLASSES.length,dets=[];
+  for(let i=0;i<N;i++){
+    let best=-Infinity,cls=0;
+    for(let c=0;c<C;c++){const s=out[(4+c)*N+i];if(s>best){best=s;cls=c;}}
+    if(best<CONF_THRESH)continue;
+    const cx=out[i],cy=out[N+i],w=out[2*N+i],h=out[3*N+i];
+    dets.push({x1:(cx-w/2)/INPUT_SIZE,y1:(cy-h/2)/INPUT_SIZE,x2:(cx+w/2)/INPUT_SIZE,y2:(cy+h/2)/INPUT_SIZE,conf:best,cls,label:CLASSES[cls]});
+  }
+  return{dets:nms(dets),ms};
+}
+function nms(dets){
+  dets.sort((a,b)=>b.conf-a.conf);
+  const keep=[],used=new Set();
+  for(let i=0;i<dets.length;i++){
+    if(used.has(i))continue;
+    keep.push(dets[i]);
+    for(let j=i+1;j<dets.length;j++){if(!used.has(j)&&iou(dets[i],dets[j])>IOU_THRESH)used.add(j);}
+  }
+  return keep;
+}
+function iou(a,b){
+  const ix1=Math.max(a.x1,b.x1),iy1=Math.max(a.y1,b.y1),ix2=Math.min(a.x2,b.x2),iy2=Math.min(a.y2,b.y2);
+  const inter=Math.max(0,ix2-ix1)*Math.max(0,iy2-iy1);
+  return inter/((a.x2-a.x1)*(a.y2-a.y1)+(b.x2-b.x1)*(b.y2-b.y1)-inter);
+}
+
+/* ── DRAW ── */
+function draw(W,H,dets){
+  ovrC.width=W;ovrC.height=H;octx.clearRect(0,0,W,H);
+  for(const d of dets){
+    const x=d.x1*W,y=d.y1*H,w=(d.x2-d.x1)*W,h=(d.y2-d.y1)*H;
+    const col=COLORS[d.label]||'#fff';const pct=(d.conf*100).toFixed(1);
+    octx.shadowColor=col;octx.shadowBlur=14;
+    octx.strokeStyle=col;octx.lineWidth=2;octx.strokeRect(x,y,w,h);
+    octx.shadowBlur=0;
+    octx.fillStyle=col+'18';octx.fillRect(x,y,w,h);
+    octx.font='bold 12px Space Mono,monospace';
+    const lbl=d.label.toUpperCase()+' '+pct+'%';
+    const tw=octx.measureText(lbl).width+12;
+    const ly=y>24?y-24:y+h;
+    rr(octx,x,ly,tw,22,3);octx.fillStyle=col;octx.fill();
+    octx.fillStyle='#000';octx.fillText(lbl,x+6,ly+15);
+    const cs=14;octx.lineWidth=3;octx.strokeStyle=col;
+    [[x,y+cs,x,y,x+cs,y],[x+w-cs,y,x+w,y,x+w,y+cs],[x,y+h-cs,x,y+h,x+cs,y+h],[x+w-cs,y+h,x+w,y+h,x+w,y+h-cs]]
+    .forEach(([ax,ay,bx,by,cx2,cy])=>{octx.beginPath();octx.moveTo(ax,ay);octx.lineTo(bx,by);octx.lineTo(cx2,cy);octx.stroke();});
+  }
+}
+function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.quadraticCurveTo(x+w,y,x+w,y+r);c.lineTo(x+w,y+h-r);c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);c.lineTo(x+r,y+h);c.quadraticCurveTo(x,y+h,x,y+h-r);c.lineTo(x,y+r);c.quadraticCurveTo(x,y,x+r,y);c.closePath();}
+
+/* ── UI ── */
+function ui(dets,ms){
+  resPanel.style.display='block';stats.style.display='grid';
+  stInf.textContent=ms.toFixed(1)+' ms';stObj.textContent=dets.length;
+  if(!dets.length){resGrid.innerHTML='<div class="no-det">Tidak ada objek terdeteksi</div>';resFoot.textContent='';return;}
+  resGrid.innerHTML=dets.map(d=>{
+    const p=(d.conf*100).toFixed(1);
+    return`<div class="ri"><span class="ri-ico">${EMOJI[d.label]||'⬜'}</span>
+    <div class="ri-info"><div class="ri-cls ${d.label}">${d.label.toUpperCase()}</div>
+    <div class="ri-conf">Confidence &nbsp;${p}% &nbsp;·&nbsp; cls#${d.cls}</div></div>
+    <div class="cb-wrap"><span class="cb-pct">${p}%</span>
+    <div class="cb-bg"><div class="cb ${d.label}" style="width:${p}%"></div></div></div></div>`;
+  }).join('');
+  const cnt={};dets.forEach(d=>cnt[d.label]=(cnt[d.label]||0)+1);
+  resFoot.textContent='Terdeteksi: '+Object.entries(cnt).map(([k,v])=>v+'× '+k).join(' · ')+'  ·  '+ms.toFixed(0)+'ms  ·  '+be;
+}
+
+/* ── IMAGE FLOW ── */
+async function processImg(url){
+  ph.style.display='none';wrap.classList.add('active');
+  const ld=document.createElement('div');ld.className='ld-ov';
+  ld.innerHTML='<div class="spin"></div><div class="ld-txt">Mendeteksi...</div>';
+  wrap.appendChild(ld);
+  const img=new Image();await new Promise(r=>{img.onload=r;img.src=url;});
+  outC.style.display='block';outC.width=img.naturalWidth||img.width;outC.height=img.naturalHeight||img.height;
+  ctx.drawImage(img,0,0);
+  const res=await infer(outC);ld.remove();
+  if(res){draw(outC.width,outC.height,res.dets);ui(res.dets,res.ms);}
+}
+
+/* ── CAMERA ── */
+async function startCam(){
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:{width:1280,height:720},audio:false});
+    video.srcObject=stream;video.style.display='block';
+    outC.style.display='none';ph.style.display='none';
+    camCtrl.style.display='flex';btnCam.style.display='none';
+    btnUp.disabled=true;wrap.classList.add('active');
+    await video.play();liveLoop();toast('Kamera aktif','ok');
+  }catch(e){toast('Gagal akses kamera: '+e.message,'err');}
+}
+function stopCam(){
+  cancelAnimationFrame(rafId);
+  stream?.getTracks().forEach(t=>t.stop());stream=null;
+  video.style.display='none';outC.style.display='none';ovrC.width=0;
+  camCtrl.style.display='none';btnCam.style.display='';
+  btnUp.disabled=false;wrap.classList.remove('active');
+  ph.style.display='flex';resPanel.style.display='none';stats.style.display='none';
+}
+let lastTs=0;
+function liveLoop(){
+  rafId=requestAnimationFrame(async ts=>{
+    if(ts-lastTs>120){lastTs=ts;
+      if(video.readyState>=2){
+        const tmp=Object.assign(document.createElement('canvas'),{width:video.videoWidth||640,height:video.videoHeight||480});
+        tmp.getContext('2d').drawImage(video,0,0);
+        const vr=video.getBoundingClientRect();
+        ovrC.style.width=vr.width+'px';ovrC.style.height=vr.height+'px';
+        const res=await infer(tmp);if(res){draw(tmp.width,tmp.height,res.dets);ui(res.dets,res.ms);}
+      }
+    }
+    if(stream)liveLoop();
+  });
+}
+function snapshot(){
+  const tmp=Object.assign(document.createElement('canvas'),{width:video.videoWidth||640,height:video.videoHeight||480});
+  const tc=tmp.getContext('2d');tc.drawImage(video,0,0);tc.drawImage(ovrC,0,0,tmp.width,tmp.height);
+  const a=document.createElement('a');a.download='monitor-snap-'+Date.now()+'.png';a.href=tmp.toDataURL();a.click();
+  toast('Snapshot disimpan ✓','ok');
+}
+
+/* ── HELPERS ── */
+function setStatus(t,cls){pillTxt.textContent=t;pill.className='pill'+(cls?' '+cls:'');}
+function toast(msg,type=''){
+  document.querySelector('.toast')?.remove();
+  const t=document.createElement('div');t.className='toast'+(type?' '+type:'');t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>{t.style.transition='opacity .4s';t.style.opacity='0';},2700);
+  setTimeout(()=>t.remove(),3200);
+}
+
+/* ── EVENTS ── */
+btnCam.onclick =startCam;
+btnStop.onclick=stopCam;
+btnSnap.onclick=snapshot;
+btnUp.onclick  =()=>fileIn.click();
+fileIn.onchange=e=>{const f=e.target.files[0];if(!f)return;processImg(URL.createObjectURL(f));fileIn.value='';};
+wrap.addEventListener('dragover',e=>{e.preventDefault();wrap.classList.add('drag');});
+wrap.addEventListener('dragleave',()=>wrap.classList.remove('drag'));
+wrap.addEventListener('drop',e=>{e.preventDefault();wrap.classList.remove('drag');const f=e.dataTransfer?.files?.[0];if(f&&f.type.startsWith('image/'))processImg(URL.createObjectURL(f));});
+document.addEventListener('paste',e=>{const f=[...e.clipboardData.items].find(i=>i.type.startsWith('image/'));if(f)processImg(URL.createObjectURL(f.getAsFile()));});
+
+loadModel();
+</script>
+</body>
+</html>
